@@ -87,6 +87,11 @@ npm test            # Run the automated tests
 npm run typecheck   # Check TypeScript without emitting files
 ```
 
+Open the Vite URL shown in the terminal. The game starts on a Start screen;
+click **Start Game** or press Enter to begin. Use Left/Right or A/D to move,
+Space/Up or W to jump, Escape/P to pause, and R/Enter to restart after a
+failure or completed level.
+
 ## Application layout
 
 - `src/main.ts` wires the browser entry point together.
