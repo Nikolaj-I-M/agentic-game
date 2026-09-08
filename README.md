@@ -63,3 +63,38 @@ See the [evaluator documentation](./docs/evaluator.md) for usage, arguments, eva
 
 In this repository we aim to have an application residing in the src folder. Here you can find a description of it and functional requirements.
 
+## Running the game locally
+
+The game is a browser-only TypeScript application with no backend or cloud
+dependency. Install the local development dependencies from the repository
+root:
+
+```sh
+npm install
+```
+
+Start the development server with:
+
+```sh
+npm run dev
+```
+
+The other project commands are:
+
+```sh
+npm run build       # Create the static production bundle
+npm test            # Run the automated tests
+npm run typecheck   # Check TypeScript without emitting files
+```
+
+## Application layout
+
+- `src/main.ts` wires the browser entry point together.
+- `src/game/` contains game logic and state.
+- `src/render/` contains canvas rendering.
+- `src/input/` contains input handling.
+- `src/levels/` contains level data.
+- `tests/` contains automated tests.
+
+The current scene is intentionally a blank canvas placeholder. Gameplay
+mechanics and level content will be added within these boundaries.
