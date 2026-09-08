@@ -1,3 +1,6 @@
+import { level1 } from "../levels";
+import type { Bounds, Goal, Hazard, Level, Obstacle } from "../levels";
+
 export interface Player {
   x: number;
   y: number;
@@ -24,6 +27,10 @@ export interface PlayerInput {
 export interface World {
   player: Player;
   platforms: Platform[];
+  obstacles: Obstacle[];
+  hazards: Hazard[];
+  goal: Goal;
+  bounds: Bounds;
 }
 
 // Tuning defaults for the first playable physics pass, in pixels and seconds.
@@ -33,21 +40,22 @@ export const JUMP_IMPULSE = 500;
 export const PLAYER_WIDTH = 40;
 export const PLAYER_HEIGHT = 40;
 
-export function createInitialWorld(): World {
+export function createInitialWorld(level: Level = level1): World {
   return {
     player: {
-      x: 120,
-      y: 100,
+      x: level.start.x,
+      y: level.start.y,
       vx: 0,
       vy: 0,
       width: PLAYER_WIDTH,
       height: PLAYER_HEIGHT,
       grounded: false,
     },
-    platforms: [
-      { x: 0, y: 360, width: 800, height: 40 },
-      { x: 400, y: 260, width: 40, height: 100 },
-    ],
+    platforms: level.platforms.map((platform) => ({ ...platform })),
+    obstacles: level.obstacles.map((obstacle) => ({ ...obstacle })),
+    hazards: level.hazards.map((hazard) => ({ ...hazard })),
+    goal: { ...level.goal },
+    bounds: { ...level.bounds },
   };
 }
 
@@ -148,6 +156,7 @@ export function updatePlayer(
   input: PlayerInput,
   platforms: readonly Platform[],
   dt: number,
+  bounds?: Bounds,
 ): Player {
   const moved = applyHorizontalMovement(
     applyJump(applyGravity(player, dt), input.jump),
@@ -155,7 +164,20 @@ export function updatePlayer(
     input.moveRight,
   );
 
-  return resolveAabbCollision(integratePosition(moved, dt), platforms);
+  const resolved = resolveAabbCollision(integratePosition(moved, dt), platforms);
+  if (!bounds) return resolved;
+
+  return {
+    ...resolved,
+    x: Math.min(
+      Math.max(resolved.x, bounds.x),
+      Math.max(bounds.x, bounds.x + bounds.width - resolved.width),
+    ),
+    y: Math.min(
+      Math.max(resolved.y, bounds.y),
+      Math.max(bounds.y, bounds.y + bounds.height - resolved.height),
+    ),
+  };
 }
 
 export function updateWorld(
@@ -164,7 +186,17 @@ export function updateWorld(
   input: PlayerInput = { moveLeft: false, moveRight: false, jump: false },
 ): World {
   return {
-    player: updatePlayer(state.player, input, state.platforms, dt),
+    player: updatePlayer(
+      state.player,
+      input,
+      [...state.platforms, ...state.obstacles],
+      dt,
+      state.bounds,
+    ),
     platforms: state.platforms.map((platform) => ({ ...platform })),
+    obstacles: state.obstacles.map((obstacle) => ({ ...obstacle })),
+    hazards: state.hazards.map((hazard) => ({ ...hazard })),
+    goal: { ...state.goal },
+    bounds: { ...state.bounds },
   };
 }
