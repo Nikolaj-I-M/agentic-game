@@ -18,23 +18,22 @@ export function createRenderer(canvas: HTMLCanvasElement): Renderer {
       context.clearRect(0, 0, canvas.width, canvas.height);
 
       context.fillStyle = "#4a5568";
-      context.fillRect(
-        world.level.x,
-        world.level.y,
-        world.level.width,
-        world.level.height,
-      );
+      for (const platform of world.platforms) {
+        context.fillRect(
+          platform.x,
+          platform.y,
+          platform.width,
+          platform.height,
+        );
+      }
 
-      context.beginPath();
-      context.arc(
-        world.blob.x,
-        world.blob.y,
-        world.blob.radius,
-        0,
-        Math.PI * 2,
-      );
       context.fillStyle = "#f56565";
-      context.fill();
+      context.fillRect(
+        world.player.x,
+        world.player.y,
+        world.player.width,
+        world.player.height,
+      );
     },
   };
 }
