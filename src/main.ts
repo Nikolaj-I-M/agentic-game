@@ -1,5 +1,5 @@
 import { GameLoop } from "./game/game-loop";
-import { createInitialWorld, updateWorld } from "./game/world";
+import { createInitialWorld, restartWorld, updateWorld } from "./game/world";
 import { InputHandler } from "./input";
 import { createRenderer } from "./render/renderer";
 import { createCamera } from "./render/camera";
@@ -18,6 +18,12 @@ const renderer = createRenderer(canvas, camera);
 const input = new InputHandler();
 const loop = new GameLoop(
   (dt) => {
+    if (world.status === "failed") {
+      if (input.isPressed("restart")) {
+        world = restartWorld(world, level);
+      }
+      return;
+    }
     world = updateWorld(world, dt, {
       moveLeft: input.isPressed("moveLeft"),
       moveRight: input.isPressed("moveRight"),

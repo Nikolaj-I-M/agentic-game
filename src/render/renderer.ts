@@ -55,6 +55,19 @@ export function createRenderer(
         world.player.height,
       );
       context.restore();
+
+      if (world.status === "failed" && world.feedback?.type === "fail") {
+        context.fillStyle = "rgba(229, 62, 62, 0.35)";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.fillStyle = "#ffffff";
+        context.font = "bold 28px sans-serif";
+        context.textAlign = "center";
+        context.fillText(
+          "Failed - press R or Enter to restart",
+          canvas.width / 2,
+          canvas.height / 2,
+        );
+      }
     },
   };
 }

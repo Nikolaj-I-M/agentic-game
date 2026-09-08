@@ -57,6 +57,13 @@ export function parseLevel(data: unknown): Level {
     throw new Error("Level start must be a point.");
   }
   const start = level.start;
+  if (
+    level.checkpoints !== undefined &&
+    (!Array.isArray(level.checkpoints) ||
+      level.checkpoints.some((checkpoint) => !isPoint(checkpoint)))
+  ) {
+    throw new Error("Level checkpoints must contain only points.");
+  }
 
   for (const [name, items] of [
     ["platforms", level.platforms],
@@ -106,6 +113,7 @@ export function parseLevel(data: unknown): Level {
     platforms: level.platforms!.map((platform) => ({ ...platform })),
     obstacles: level.obstacles!.map((obstacle) => ({ ...obstacle })),
     hazards: level.hazards!.map((hazard) => ({ ...hazard })),
+    checkpoints: level.checkpoints?.map((checkpoint) => ({ ...checkpoint })),
   };
 }
 

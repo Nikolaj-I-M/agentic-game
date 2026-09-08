@@ -35,6 +35,8 @@ export interface Goal extends Point {
   height: number;
 }
 
+export interface Checkpoint extends Point {}
+
 export interface LevelData {
   id: string;
   bounds: Bounds;
@@ -43,6 +45,7 @@ export interface LevelData {
   platforms: Platform[];
   obstacles: Obstacle[];
   hazards: Hazard[];
+  checkpoints?: Checkpoint[];
 }
 
 export type Level = LevelData;
