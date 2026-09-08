@@ -1,8 +1,9 @@
 import type { World } from "../game/world";
+import type { GameState } from "../game/state-machine";
 import { createCamera, type Camera } from "./camera";
 
 export interface Renderer {
-  render(world: World): void;
+  render(world: World, state: GameState): void;
 }
 
 export function createRenderer(
@@ -16,7 +17,7 @@ export function createRenderer(
   }
 
   return {
-    render(world) {
+    render(world, state) {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
       context.clearRect(0, 0, canvas.width, canvas.height);
@@ -56,17 +57,12 @@ export function createRenderer(
       );
       context.restore();
 
-      if (world.status === "failed" && world.feedback?.type === "fail") {
+      if (state === "gameOver") {
         context.fillStyle = "rgba(229, 62, 62, 0.35)";
         context.fillRect(0, 0, canvas.width, canvas.height);
         context.fillStyle = "#ffffff";
         context.font = "bold 28px sans-serif";
         context.textAlign = "center";
-        context.fillText(
-          "Failed - press R or Enter to restart",
-          canvas.width / 2,
-          canvas.height / 2,
-        );
       }
     },
   };

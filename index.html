@@ -4,9 +4,59 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>McSquishy: Blob on the Run</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+      }
+
+      body {
+        background: #1a202c;
+        font-family: sans-serif;
+      }
+
+      #game-canvas {
+        display: block;
+      }
+
+      #game-ui {
+        inset: 0;
+        position: fixed;
+        pointer-events: none;
+      }
+
+      .game-overlay {
+        align-items: center;
+        background: rgba(26, 32, 44, 0.88);
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        inset: 0;
+        justify-content: center;
+        pointer-events: auto;
+        text-align: center;
+      }
+
+      .game-overlay h1 {
+        margin: 0 0 0.75rem;
+      }
+
+      .game-overlay p {
+        margin: 0 0 1.25rem;
+      }
+
+      .game-overlay button {
+        cursor: pointer;
+        font-size: 1rem;
+        padding: 0.6rem 1.2rem;
+      }
+    </style>
   </head>
   <body>
     <canvas id="game-canvas" aria-label="Game canvas"></canvas>
+    <div id="game-ui" aria-live="polite"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
