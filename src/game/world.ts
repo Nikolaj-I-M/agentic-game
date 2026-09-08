@@ -24,10 +24,10 @@ export interface PlayerInput {
   jump: boolean;
 }
 
-export type WorldStatus = "playing" | "failed";
+export type WorldStatus = "playing" | "failed" | "completed";
 
 export interface WorldFeedback {
-  type: "fail" | "restart";
+  type: "fail" | "complete" | "restart";
   at: number;
 }
 
@@ -199,6 +199,10 @@ export function checkForHazardCollision(
   );
 }
 
+export function checkForGoalCollision(player: Player, goal: Goal): boolean {
+  return overlapsVertically(player, goal) && overlapsHorizontally(player, goal);
+}
+
 export function isOutOfBounds(player: Player, bounds: Bounds): boolean {
   return player.y + player.height > bounds.y + bounds.height;
 }
@@ -223,7 +227,10 @@ export function resolveRestartPosition(
 }
 
 export function restartWorld(state: World, level: Level): World {
-  const position = resolveRestartPosition(level, state.lastCheckpoint);
+  const position =
+    state.status === "completed"
+      ? level.start
+      : resolveRestartPosition(level, state.lastCheckpoint);
   return {
     player: {
       ...state.player,
@@ -239,9 +246,12 @@ export function restartWorld(state: World, level: Level): World {
     goal: { ...level.goal },
     bounds: { ...level.bounds },
     status: "playing",
-    lastCheckpoint: state.lastCheckpoint
-      ? { ...state.lastCheckpoint }
-      : undefined,
+    lastCheckpoint:
+      state.status === "completed"
+        ? undefined
+        : state.lastCheckpoint
+          ? { ...state.lastCheckpoint }
+          : undefined,
     feedback: { type: "restart", at: (state.feedback?.at ?? 0) + 1 },
   };
 }
@@ -251,7 +261,7 @@ export function updateWorld(
   dt: number,
   input: PlayerInput = { moveLeft: false, moveRight: false, jump: false },
 ): World {
-  if (state.status === "failed") {
+  if (state.status === "failed" || state.status === "completed") {
     return {
       ...state,
       player: { ...state.player },
@@ -275,6 +285,9 @@ export function updateWorld(
     checkForHazardCollision(player, state.hazards) ||
     isOutOfBounds(state.player, state.bounds) ||
     isOutOfBounds(player, state.bounds);
+  const completed =
+    checkForGoalCollision(state.player, state.goal) ||
+    checkForGoalCollision(player, state.goal);
 
   return {
     player,
@@ -283,12 +296,14 @@ export function updateWorld(
     hazards: state.hazards.map((hazard) => ({ ...hazard })),
     goal: { ...state.goal },
     bounds: { ...state.bounds },
-    status: failed ? "failed" : "playing",
+    status: failed ? "failed" : completed ? "completed" : "playing",
     lastCheckpoint: state.lastCheckpoint
       ? { ...state.lastCheckpoint }
       : undefined,
     feedback: failed
       ? { type: "fail", at: (state.feedback?.at ?? 0) + 1 }
-      : state.feedback,
+      : completed
+        ? { type: "complete", at: (state.feedback?.at ?? 0) + 1 }
+        : state.feedback,
   };
 }

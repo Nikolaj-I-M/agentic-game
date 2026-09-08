@@ -4,6 +4,7 @@ import {
   applyHorizontalMovement,
   applyJump,
   createInitialWorld,
+  checkForGoalCollision,
   checkForHazardCollision,
   restartWorld,
   resolveAabbCollision,
@@ -114,6 +115,36 @@ describe("world physics", () => {
     );
   });
 
+  it("detects goal overlap but not boundary contact", () => {
+    const goal = { x: 10, y: 10, width: 20, height: 20 };
+    expect(checkForGoalCollision(player({ x: 20, y: 15 }), goal)).toBe(true);
+    expect(checkForGoalCollision(player({ x: 30, y: 15 }), goal)).toBe(false);
+    expect(checkForGoalCollision(player({ x: 15, y: 30 }), goal)).toBe(false);
+  });
+
+  it("completes the world on goal contact and stops further physics", () => {
+    const world = createInitialWorld();
+    const goalWorld = {
+      ...world,
+      player: { ...world.player, x: world.goal.x, y: world.goal.y },
+    };
+    const completed = updateWorld(goalWorld, 0, {
+      moveLeft: false,
+      moveRight: true,
+      jump: true,
+    });
+
+    expect(completed.status).toBe("completed");
+    expect(completed.feedback).toEqual({ type: "complete", at: 1 });
+
+    const unchanged = updateWorld(completed, 1, {
+      moveLeft: true,
+      moveRight: false,
+      jump: true,
+    });
+    expect(unchanged).toEqual(completed);
+  });
+
   it("fails the world on hazard contact or falling out of bounds", () => {
     const world = createInitialWorld();
     const hazardWorld = {
@@ -185,5 +216,37 @@ describe("world physics", () => {
       grounded: false,
     });
     expect(restarted.feedback).toEqual({ type: "restart", at: 5 });
+  });
+
+  it("restarts a completed world at the level start", () => {
+    const world = createInitialWorld();
+    const completed = {
+      ...world,
+      status: "completed" as const,
+      lastCheckpoint: { x: 200, y: 10 },
+      player: { ...world.player, x: 900, y: 900 },
+      feedback: { type: "complete" as const, at: 3 },
+    };
+    const restarted = restartWorld(completed, {
+      id: "test",
+      bounds: world.bounds,
+      start: { x: 20, y: 30 },
+      goal: world.goal,
+      platforms: world.platforms,
+      obstacles: world.obstacles,
+      hazards: world.hazards,
+      checkpoints: [{ x: 200, y: 10 }],
+    });
+
+    expect(restarted.status).toBe("playing");
+    expect(restarted.player).toMatchObject({
+      x: 20,
+      y: 30,
+      vx: 0,
+      vy: 0,
+      grounded: false,
+    });
+    expect(restarted.lastCheckpoint).toBeUndefined();
+    expect(restarted.feedback).toEqual({ type: "restart", at: 4 });
   });
 });
