@@ -4,11 +4,16 @@ import {
   applyHorizontalMovement,
   applyJump,
   createInitialWorld,
+  checkForHazardCollision,
+  restartWorld,
   resolveAabbCollision,
+  resolveRestartPosition,
+  updateWorld,
   updatePlayer,
   type Platform,
   type Player,
 } from "../src/game/world";
+import type { Level } from "../src/levels";
 
 const player = (overrides: Partial<Player> = {}): Player => ({
   x: 0,
@@ -91,5 +96,94 @@ describe("world physics", () => {
       0.1,
     );
     expect(resolved.grounded).toBe(false);
+  });
+
+  it("detects hazard overlap but not separated hazards", () => {
+    const hazard = {
+      x: 10,
+      y: 10,
+      width: 20,
+      height: 10,
+      type: "spikes" as const,
+    };
+    expect(checkForHazardCollision(player({ x: 20, y: 15 }), [hazard])).toBe(
+      true,
+    );
+    expect(checkForHazardCollision(player({ x: 31, y: 15 }), [hazard])).toBe(
+      false,
+    );
+  });
+
+  it("fails the world on hazard contact or falling out of bounds", () => {
+    const world = createInitialWorld();
+    const hazardWorld = {
+      ...world,
+      player: { ...world.player, x: world.hazards[0].x, y: world.hazards[0].y },
+    };
+    expect(updateWorld(hazardWorld, 0).status).toBe("failed");
+
+    const fallingWorld = {
+      ...world,
+      player: { ...world.player, y: world.bounds.y + world.bounds.height },
+    };
+    expect(updateWorld(fallingWorld, 0).status).toBe("failed");
+  });
+
+  it("resolves restart positions from the start or nearest passed checkpoint", () => {
+    const levelWithCheckpoints: Level = {
+      id: "test",
+      bounds: { x: 0, y: 0, width: 500, height: 300 },
+      start: { x: 10, y: 10 },
+      goal: { x: 450, y: 250, width: 20, height: 20 },
+      platforms: [{ x: 0, y: 280, width: 500, height: 20 }],
+      obstacles: [],
+      hazards: [{ x: 100, y: 250, width: 20, height: 30, type: "spikes" }],
+      checkpoints: [{ x: 100, y: 10 }, { x: 200, y: 10 }],
+    };
+    const levelWithoutCheckpoints: Level = {
+      ...levelWithCheckpoints,
+      checkpoints: undefined,
+    };
+    expect(
+      resolveRestartPosition(levelWithoutCheckpoints, { x: 300, y: 10 }),
+    ).toEqual({ x: 10, y: 10 });
+    expect(
+      resolveRestartPosition(levelWithCheckpoints, { x: 250, y: 10 }),
+    ).toEqual({ x: 200, y: 10 });
+  });
+
+  it("restarts a failed world at its resolved position and clears failure", () => {
+    const world = createInitialWorld();
+    const failed = {
+      ...world,
+      status: "failed" as const,
+      player: {
+        ...world.player,
+        x: 900,
+        y: 900,
+        vx: 4,
+        vy: 5,
+        grounded: true,
+      },
+      feedback: { type: "fail" as const, at: 4 },
+    };
+    const restarted = restartWorld(failed, {
+      id: "test",
+      bounds: world.bounds,
+      start: { x: 20, y: 30 },
+      goal: world.goal,
+      platforms: world.platforms,
+      obstacles: world.obstacles,
+      hazards: world.hazards,
+    });
+    expect(restarted.status).toBe("playing");
+    expect(restarted.player).toMatchObject({
+      x: 20,
+      y: 30,
+      vx: 0,
+      vy: 0,
+      grounded: false,
+    });
+    expect(restarted.feedback).toEqual({ type: "restart", at: 5 });
   });
 });

@@ -1,5 +1,5 @@
 import { level1 } from "../levels";
-import type { Bounds, Goal, Hazard, Level, Obstacle } from "../levels";
+import type { Bounds, Goal, Hazard, Level, Obstacle, Point } from "../levels";
 
 export interface Player {
   x: number;
@@ -24,6 +24,13 @@ export interface PlayerInput {
   jump: boolean;
 }
 
+export type WorldStatus = "playing" | "failed";
+
+export interface WorldFeedback {
+  type: "fail" | "restart";
+  at: number;
+}
+
 export interface World {
   player: Player;
   platforms: Platform[];
@@ -31,6 +38,9 @@ export interface World {
   hazards: Hazard[];
   goal: Goal;
   bounds: Bounds;
+  status: WorldStatus;
+  lastCheckpoint?: Point;
+  feedback?: WorldFeedback;
 }
 
 // Tuning defaults for the first playable physics pass, in pixels and seconds.
@@ -56,6 +66,7 @@ export function createInitialWorld(level: Level = level1): World {
     hazards: level.hazards.map((hazard) => ({ ...hazard })),
     goal: { ...level.goal },
     bounds: { ...level.bounds },
+    status: "playing",
   };
 }
 
@@ -97,14 +108,14 @@ export function integratePosition(player: Player, dt: number): Player {
   };
 }
 
-function overlapsVertically(player: Player, platform: Platform): boolean {
+export function overlapsVertically(player: Player, platform: Platform): boolean {
   return (
     player.y < platform.y + platform.height &&
     player.y + player.height > platform.y
   );
 }
 
-function overlapsHorizontally(player: Player, platform: Platform): boolean {
+export function overlapsHorizontally(player: Player, platform: Platform): boolean {
   return (
     player.x < platform.x + platform.width &&
     player.x + player.width > platform.x
@@ -173,10 +184,65 @@ export function updatePlayer(
       Math.max(resolved.x, bounds.x),
       Math.max(bounds.x, bounds.x + bounds.width - resolved.width),
     ),
-    y: Math.min(
-      Math.max(resolved.y, bounds.y),
-      Math.max(bounds.y, bounds.y + bounds.height - resolved.height),
-    ),
+    y: Math.max(resolved.y, bounds.y),
+  };
+}
+
+export function checkForHazardCollision(
+  player: Player,
+  hazards: readonly Hazard[],
+): boolean {
+  return hazards.some(
+    (hazard) =>
+      overlapsVertically(player, hazard) &&
+      overlapsHorizontally(player, hazard),
+  );
+}
+
+export function isOutOfBounds(player: Player, bounds: Bounds): boolean {
+  return player.y + player.height > bounds.y + bounds.height;
+}
+
+export function resolveRestartPosition(
+  level: Level,
+  lastCheckpoint?: Point,
+): Point {
+  if (!level.checkpoints?.length || !lastCheckpoint) {
+    return { ...level.start };
+  }
+
+  const passed = level.checkpoints.filter(
+    (checkpoint) => checkpoint.x <= lastCheckpoint.x,
+  );
+  const restart = passed.reduce(
+    (nearest, checkpoint) =>
+      checkpoint.x > nearest.x ? checkpoint : nearest,
+    level.start,
+  );
+  return { ...restart };
+}
+
+export function restartWorld(state: World, level: Level): World {
+  const position = resolveRestartPosition(level, state.lastCheckpoint);
+  return {
+    player: {
+      ...state.player,
+      x: position.x,
+      y: position.y,
+      vx: 0,
+      vy: 0,
+      grounded: false,
+    },
+    platforms: level.platforms.map((platform) => ({ ...platform })),
+    obstacles: level.obstacles.map((obstacle) => ({ ...obstacle })),
+    hazards: level.hazards.map((hazard) => ({ ...hazard })),
+    goal: { ...level.goal },
+    bounds: { ...level.bounds },
+    status: "playing",
+    lastCheckpoint: state.lastCheckpoint
+      ? { ...state.lastCheckpoint }
+      : undefined,
+    feedback: { type: "restart", at: (state.feedback?.at ?? 0) + 1 },
   };
 }
 
@@ -185,18 +251,44 @@ export function updateWorld(
   dt: number,
   input: PlayerInput = { moveLeft: false, moveRight: false, jump: false },
 ): World {
-  return {
-    player: updatePlayer(
+  if (state.status === "failed") {
+    return {
+      ...state,
+      player: { ...state.player },
+      platforms: state.platforms.map((platform) => ({ ...platform })),
+      obstacles: state.obstacles.map((obstacle) => ({ ...obstacle })),
+      hazards: state.hazards.map((hazard) => ({ ...hazard })),
+      goal: { ...state.goal },
+      bounds: { ...state.bounds },
+    };
+  }
+
+  const player = updatePlayer(
       state.player,
       input,
       [...state.platforms, ...state.obstacles],
       dt,
       state.bounds,
-    ),
+    );
+  const failed =
+    checkForHazardCollision(state.player, state.hazards) ||
+    checkForHazardCollision(player, state.hazards) ||
+    isOutOfBounds(state.player, state.bounds) ||
+    isOutOfBounds(player, state.bounds);
+
+  return {
+    player,
     platforms: state.platforms.map((platform) => ({ ...platform })),
     obstacles: state.obstacles.map((obstacle) => ({ ...obstacle })),
     hazards: state.hazards.map((hazard) => ({ ...hazard })),
     goal: { ...state.goal },
     bounds: { ...state.bounds },
+    status: failed ? "failed" : "playing",
+    lastCheckpoint: state.lastCheckpoint
+      ? { ...state.lastCheckpoint }
+      : undefined,
+    feedback: failed
+      ? { type: "fail", at: (state.feedback?.at ?? 0) + 1 }
+      : state.feedback,
   };
 }

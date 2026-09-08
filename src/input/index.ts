@@ -1,4 +1,9 @@
-export type ActionName = "moveLeft" | "moveRight" | "jump" | "pause";
+export type ActionName =
+  | "moveLeft"
+  | "moveRight"
+  | "jump"
+  | "pause"
+  | "restart";
 
 const KEY_BINDINGS: Readonly<Record<string, ActionName>> = {
   ArrowLeft: "moveLeft",
@@ -20,6 +25,11 @@ const KEY_BINDINGS: Readonly<Record<string, ActionName>> = {
   KeyP: "pause",
   p: "pause",
   P: "pause",
+  Enter: "restart",
+  NumpadEnter: "restart",
+  KeyR: "restart",
+  r: "restart",
+  R: "restart",
 };
 
 const PREVENT_DEFAULT_ACTIONS = new Set<ActionName>([
